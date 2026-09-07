@@ -1,0 +1,27 @@
+{
+  "name": "hello-antigravity-react",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Interactive React JS component displaying Hello Antigravity text with zero-gravity visual effects",
+  "main": "App.jsx",
+  "scripts": {
+    "start": "npx serve ."
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "vite": "^5.4.2"
+  },
+  "keywords": [
+    "react",
+    "antigravity",
+    "jsx",
+    "component",
+    "frontend"
+  ],
+  "author": "Antigravity AI Team",
+  "license": "MIT"
+}

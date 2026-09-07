@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hello Antigravity - React JS Application</title>
+  <meta name="description" content="A futuristic, high-performance React component displaying Hello Antigravity with zero-gravity animations, glassmorphism UI, and interactive state management." />
+  
+  <!-- SEO & Open Graph Meta Tags -->
+  <meta property="og:title" content="Hello Antigravity - React JS Application" />
+  <meta property="og:description" content="Interactive React JS component displaying Hello Antigravity with zero-gravity levitation effects and custom styling." />
+  <meta property="og:type" content="website" />
+  
+  <!-- Main Stylesheet -->
+  <link rel="stylesheet" href="./styles.css" />
+
+  <!-- React 18 UMD & Babel standalone for instant browser execution -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+  <!-- Root React Mounting Point -->
+  <div id="root"></div>
+
+  <!-- React JSX Application Script Loading -->
+  <script type="text/babel" src="./HelloAntigravity.jsx"></script>
+  <script type="text/babel" src="./App.jsx"></script>
+
+  <!-- Mount React App -->
+  <script type="text/babel">
+    const container = document.getElementById('root');
+    const root = ReactDOM.createRoot(container);
+    root.render(<App />);
+  </script>
+</body>
+</html>

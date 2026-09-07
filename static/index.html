@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MailShield AI - Enterprise Email Threat & Spam Detection</title>
+  <meta name="description" content="MailShield AI is a full-stack email security and spam detection platform powered by Machine Learning, Domain/IP Intelligence, SPF/DKIM/DMARC authentication, Geolocation, and Blockchain evidence verification." />
+  
+  <!-- Favicon Logo -->
+  <link rel="icon" type="image/png" href="/static/mailshield_logo.png" />
+
+  <!-- Main Stylesheet -->
+  <link rel="stylesheet" href="/static/styles.css" />
+
+  <!-- React 18 & Babel Standalone CDNs -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+  <!-- React App Root Mounting Point -->
+  <div id="root"></div>
+
+  <!-- Load React Components in Order -->
+  <script type="text/babel" src="/static/components/MailShieldLogo.jsx"></script>
+  <script type="text/babel" src="/static/components/RadarDashboard.jsx"></script>
+  <script type="text/babel" src="/static/components/AnalyzerInput.jsx"></script>
+  <script type="text/babel" src="/static/components/ThreatGauge.jsx"></script>
+  <script type="text/babel" src="/static/components/ThreatCorrelation.jsx"></script>
+  <script type="text/babel" src="/static/components/DomainIpIntel.jsx"></script>
+  <script type="text/babel" src="/static/components/AuthGrid.jsx"></script>
+  <script type="text/babel" src="/static/components/AttackTrace.jsx"></script>
+  <script type="text/babel" src="/static/components/ThreatRationale.jsx"></script>
+  <script type="text/babel" src="/static/components/BlockchainProof.jsx"></script>
+  <script type="text/babel" src="/static/components/HistoryDrawer.jsx"></script>
+  <script type="text/babel" src="/static/App.jsx"></script>
+</body>
+</html>

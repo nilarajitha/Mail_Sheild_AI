@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  mailshield-ai:
+    build: .
+    container_name: mailshield_ai_server
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+    volumes:
+      - mailshield_data:/app/data
+
+volumes:
+  mailshield_data:
