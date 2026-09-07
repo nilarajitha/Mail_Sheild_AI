@@ -33,6 +33,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Reuse labeled history after every process restart.
+ml_engine.train(db.get_training_rows())
+
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
 
 # Helper function to process analysis
@@ -120,6 +123,7 @@ def process_email_analysis(email_text: str, email_subject: str = "", sender: str
         "severity": severity,
         "category": category,
         "confidence": ml_res["confidence"],
+        "predicted_label": "spam" if threat_score >= 35.0 else "ham",
         "ml_analysis": ml_res,
         "domain_intelligence": domain_res,
         "ip_intelligence": ip_res,
@@ -189,6 +193,31 @@ async def delete_history_item(scan_id: str):
 async def clear_history():
     db.clear_all()
     return {"message": "All scan history cleared."}
+
+
+@app.get("/api/model/status")
+async def get_model_status():
+    labeled_rows = db.get_training_rows()
+    return {**ml_engine.status(), "labeled_history_count": len(labeled_rows)}
+
+
+@app.post("/api/model/train")
+async def train_model():
+    result = ml_engine.train(db.get_training_rows())
+    return {**result, **ml_engine.status()}
+
+
+@app.post("/api/history/{scan_id}/label")
+async def label_history_item(scan_id: str, payload: Dict[str, Any]):
+    label = str(payload.get("label", "")).lower()
+    try:
+        db.set_training_label(scan_id, label)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Scan report not found.")
+    result = ml_engine.train(db.get_training_rows())
+    return {"scan_id": scan_id, "label": label, **result, **ml_engine.status()}
 
 
 @app.get("/api/report/download/{scan_id}")

@@ -2,6 +2,9 @@ import re
 import math
 from typing import Dict, Any, List, Tuple
 
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.linear_model import LogisticRegression
+
 class SpamMLEngine:
     """
     Enterprise ML Email Spam & Threat Classification Engine.
@@ -9,6 +12,9 @@ class SpamMLEngine:
     URL analysis, header anomaly evaluation, and natural language threat heuristics.
     """
     def __init__(self):
+        self.vectorizer = None
+        self.classifier = None
+        self.training_count = 0
         # 1. Phishing & Credential Stealer N-grams & Weights
         self.phishing_ngrams = {
             "verify your account": 4.5, "account suspended": 4.8, "security alert": 4.0,
@@ -55,6 +61,44 @@ class SpamMLEngine:
             "github pull request": -3.2, "documentation": -2.5, "thanks": -1.2,
             "best regards": -1.5, "sprint planning": -2.8, "standup": -2.2,
             "pull request": -3.0, "code review": -2.8
+        }
+
+    def train(self, rows: List[Dict[str, Any]]) -> Dict[str, Any]:
+        usable_rows = [
+            row for row in rows
+            if row.get("training_label") in {"spam", "ham"}
+            and (row.get("email_text") or row.get("subject"))
+        ]
+        labels = [row["training_label"] for row in usable_rows]
+        if len(set(labels)) < 2:
+            self.vectorizer = None
+            self.classifier = None
+            self.training_count = len(usable_rows)
+            return {
+                "trained": False,
+                "training_count": self.training_count,
+                "message": "Add at least one spam and one ham label before training.",
+            }
+
+        texts = [f"{row.get('subject', '')} {row.get('email_text', '')}" for row in usable_rows]
+        vectorizer = TfidfVectorizer(lowercase=True, ngram_range=(1, 2), sublinear_tf=True)
+        features = vectorizer.fit_transform(texts)
+        classifier = LogisticRegression(max_iter=1000, class_weight="balanced")
+        classifier.fit(features, labels)
+        self.vectorizer = vectorizer
+        self.classifier = classifier
+        self.training_count = len(usable_rows)
+        return {
+            "trained": True,
+            "training_count": self.training_count,
+            "message": "Model trained from explicitly labeled scan history.",
+        }
+
+    def status(self) -> Dict[str, Any]:
+        return {
+            "trained": self.classifier is not None,
+            "training_count": self.training_count,
+            "labels_required": ["spam", "ham"],
         }
 
     def extract_urls(self, text: str) -> List[str]:
@@ -201,6 +245,24 @@ class SpamMLEngine:
         # ML Model Confidence Level Calculation
         confidence = round(min(88.0 + (threat_score / 8.0), 99.6), 1)
 
+        learned_probability = None
+        if self.classifier is not None and self.vectorizer is not None:
+            learned_features = self.vectorizer.transform([full_content])
+            probabilities = self.classifier.predict_proba(learned_features)[0]
+            spam_index = list(self.classifier.classes_).index("spam")
+            learned_probability = round(float(probabilities[spam_index] * 100), 1)
+            threat_score = round((threat_score * 0.6) + (learned_probability * 0.4), 1)
+            if threat_score >= 80.0:
+                severity = "CRITICAL"
+            elif threat_score >= 60.0:
+                severity = "HIGH"
+            elif threat_score >= 35.0:
+                severity = "MEDIUM"
+            elif threat_score >= 15.0:
+                severity = "LOW"
+            else:
+                severity = "CLEAN"
+
         return {
             "threat_score": threat_score,
             "severity": severity,
@@ -210,7 +272,9 @@ class SpamMLEngine:
             "url_analysis": url_info,
             "phishing_subscore": round(phishing_score, 1),
             "bec_subscore": round(bec_score, 1),
-            "malware_subscore": round(malware_score, 1)
+            "malware_subscore": round(malware_score, 1),
+            "learned_spam_probability": learned_probability,
+            "model_source": "rules_plus_trained_history" if learned_probability is not None else "rules_only"
         }
 
 # Global singleton

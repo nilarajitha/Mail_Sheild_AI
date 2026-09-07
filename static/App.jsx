@@ -7,10 +7,12 @@ function App() {
   const [inspectData, setInspectData] = useState(null);
   const [historyItems, setHistoryItems] = useState([]);
   const [notification, setNotification] = useState(null);
+  const [modelStatus, setModelStatus] = useState(null);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
     fetchHistory();
+    fetchModelStatus();
   }, [theme]);
 
   const showNotify = (msg, type = 'info') => {
@@ -23,6 +25,13 @@ function App() {
       .then(res => res.json())
       .then(data => setHistoryItems(data))
       .catch(err => console.error("Failed to load history:", err));
+  };
+
+  const fetchModelStatus = () => {
+    fetch('/api/model/status')
+      .then(res => res.json())
+      .then(data => setModelStatus(data))
+      .catch(err => console.error("Failed to load model status:", err));
   };
 
   const toggleTheme = () => {
@@ -114,6 +123,25 @@ function App() {
     }
   };
 
+  const handleTrainingLabel = (scanId, label) => {
+    fetch(`/api/history/${scanId}/label`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ label })
+    })
+      .then(res => {
+        if (!res.ok) throw new Error('Labeling failed.');
+        return res.json();
+      })
+      .then(data => {
+        setModelStatus(data);
+        setAnalysisResult(previous => previous ? { ...previous, training_label: label } : previous);
+        fetchHistory();
+        showNotify(data.trained ? `Marked as ${label}. Model retrained from ${data.training_count} emails.` : `Marked as ${label}. Add the other label to train the model.`, 'success');
+      })
+      .catch(() => showNotify('Could not save the training label.', 'error'));
+  };
+
   return (
     <div className="app-layout">
       {/* Toast Notification */}
@@ -144,6 +172,9 @@ function App() {
       {/* Hero Security Radar Banner */}
       <section className="dashboard-hero">
         <window.RadarDashboard activeThreatCount={historyItems.length} />
+        <div className="model-status-banner">
+          Model: {modelStatus?.trained ? `trained on ${modelStatus.training_count} labeled emails` : 'rules-only; label one spam and one ham email to train'}
+        </div>
       </section>
 
       {/* Main Workspace */}
@@ -168,6 +199,14 @@ function App() {
                 category={analysisResult.category}
                 confidence={analysisResult.confidence}
               />
+              <div className="training-label-panel">
+                <strong>Correct this result for training</strong>
+                <span>Saved email: {analysisResult.training_label || 'not labeled'}</span>
+                <div>
+                  <button className="btn-tbl-del" onClick={() => handleTrainingLabel(analysisResult.scan_id, 'spam')}>Mark Spam</button>
+                  <button className="btn-tbl-view" onClick={() => handleTrainingLabel(analysisResult.scan_id, 'ham')}>Mark Ham</button>
+                </div>
+              </div>
             </div>
 
             {/* Email Relationship & Threat Correlation Component */}

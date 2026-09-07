@@ -40,6 +40,13 @@ class ScanHistoryDB:
                         report_json TEXT NOT NULL
                     );
                 """)
+                columns = {
+                    row[1] for row in conn.execute("PRAGMA table_info(scan_history)").fetchall()
+                }
+                if "email_text" not in columns:
+                    conn.execute("ALTER TABLE scan_history ADD COLUMN email_text TEXT NOT NULL DEFAULT ''")
+                if "training_label" not in columns:
+                    conn.execute("ALTER TABLE scan_history ADD COLUMN training_label TEXT")
                 conn.commit()
         except Exception as e:
             print("DB init exception:", e)
@@ -61,25 +68,26 @@ class ScanHistoryDB:
         dmarc_status = auth.get("dmarc", {}).get("status", "NONE")
 
         report_json_str = json.dumps(report_data)
+        email_text = report_data.get("email_text", "")
 
         with self._get_connection() as conn:
             conn.execute("""
                 INSERT OR REPLACE INTO scan_history (
                     id, timestamp, subject, sender, sender_domain, sender_ip,
                     threat_score, severity, category, country,
-                    spf_status, dkim_status, dmarc_status, report_json
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+                    spf_status, dkim_status, dmarc_status, report_json, email_text
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
             """, (
                 scan_id, timestamp, subject, sender, sender_domain, sender_ip,
                 threat_score, severity, category, country,
-                spf_status, dkim_status, dmarc_status, report_json_str
+                spf_status, dkim_status, dmarc_status, report_json_str, email_text
             ))
             conn.commit()
 
     def get_all_scans(self) -> List[Dict[str, Any]]:
         try:
             with self._get_connection() as conn:
-                cursor = conn.execute("SELECT id, timestamp, subject, sender, sender_domain, sender_ip, threat_score, severity, category, country, spf_status, dkim_status, dmarc_status FROM scan_history ORDER BY ROWID DESC LIMIT 50;")
+                cursor = conn.execute("SELECT id, timestamp, subject, sender, sender_domain, sender_ip, threat_score, severity, category, country, spf_status, dkim_status, dmarc_status, training_label FROM scan_history ORDER BY ROWID DESC LIMIT 50;")
                 rows = cursor.fetchall()
                 return [dict(row) for row in rows]
         except Exception:
@@ -88,13 +96,37 @@ class ScanHistoryDB:
     def get_scan_by_id(self, scan_id: str) -> Optional[Dict[str, Any]]:
         try:
             with self._get_connection() as conn:
-                cursor = conn.execute("SELECT report_json FROM scan_history WHERE id = ?;", (scan_id,))
+                cursor = conn.execute("SELECT report_json, training_label FROM scan_history WHERE id = ?;", (scan_id,))
                 row = cursor.fetchone()
                 if row:
-                    return json.loads(row["report_json"])
+                    report = json.loads(row["report_json"])
+                    report["training_label"] = row["training_label"]
+                    return report
                 return None
         except Exception:
             return None
+
+    def set_training_label(self, scan_id: str, label: str):
+        normalized_label = label.strip().lower()
+        if normalized_label not in {"spam", "ham"}:
+            raise ValueError("Training label must be 'spam' or 'ham'.")
+        with self._get_connection() as conn:
+            cursor = conn.execute(
+                "UPDATE scan_history SET training_label = ? WHERE id = ?",
+                (normalized_label, scan_id),
+            )
+            if cursor.rowcount == 0:
+                raise KeyError(scan_id)
+            conn.commit()
+
+    def get_training_rows(self) -> List[Dict[str, Any]]:
+        with self._get_connection() as conn:
+            rows = conn.execute(
+                "SELECT subject, email_text, sender, training_label "
+                "FROM scan_history WHERE training_label IN ('spam', 'ham') "
+                "AND email_text <> ''"
+            ).fetchall()
+            return [dict(row) for row in rows]
 
     def delete_scan(self, scan_id: str):
         try:
